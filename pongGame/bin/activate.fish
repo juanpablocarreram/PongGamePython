@@ -33,7 +33,7 @@ end
 # Unset irrelevant variables.
 deactivate nondestructive
 
-set -gx VIRTUAL_ENV /mnt/c/repos/pythonProjects/pongGame/pongGame
+set -gx VIRTUAL_ENV /mnt/d/repos/pythonProjects/PongGamePython/pongGame
 
 set -gx _OLD_VIRTUAL_PATH $PATH
 set -gx PATH "$VIRTUAL_ENV/"bin $PATH
