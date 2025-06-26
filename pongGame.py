@@ -11,7 +11,7 @@ class Game:
         self.game_resolution = 500,354
         self.screen = pygame.display.set_mode(self.game_resolution)
         self.clock = pygame.time.Clock()
-        self.minimum_horizontal_speed = .012
+        self.minimum_horizontal_speed = .014
         self.initial_direction_choice = [self.game_resolution[0] * self.minimum_horizontal_speed,-self.game_resolution[0] *self.minimum_horizontal_speed]
         """ Create a circle like surface inside the box of the circle"""
         self.ball_surface_dimensions = self.game_resolution[0] * .02, self.game_resolution[0] *.02
@@ -32,6 +32,7 @@ class Game:
         self.recent_left_player_point = False
         self.recent_player_point = 0
         self.is_game_closed = False
+        self.speed_menu = False
         pygame.draw.circle(self.ball_surface,self.object_color,(self.ball_surface_dimensions[0]//2,self.ball_surface_dimensions[1]//2),self.ball_surface_dimensions[0]//2)
     """ Method for executing game """
     def execute_game(self):
@@ -59,9 +60,33 @@ class Game:
     def event_manager(self):
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
-                 self.is_game_closed = True
-            if event.type == pygame.KEYDOWN and not self.running:
-                self.running = True   
+                 self.is_game_closed = True 
+            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1 and not self.running:
+                mouse_pos = pygame.mouse.get_pos()
+                mouse_rect = pygame.Rect(mouse_pos[0],mouse_pos[1],1,1)
+                if not self.speed_menu:
+                    if mouse_rect.colliderect(self.menu_buttons_rect[0]):
+                        self.speed_menu = True
+                        self.render_menu_logic(["Return Main Menu","Slow","Fast"])
+                    if mouse_rect.colliderect(self.menu_buttons_rect[1]):
+                        self.running = True
+                    if mouse_rect.colliderect(self.menu_buttons_rect[2]):
+                        print("Now")
+                        self.is_game_closed = True
+                else:
+                    if mouse_rect.colliderect(self.menu_buttons_rect[0]) or mouse_rect.colliderect(self.menu_buttons_rect[1]) or mouse_rect.colliderect(self.menu_buttons_rect[2]):
+                        self.speed_menu = False
+                    if mouse_rect.colliderect(self.menu_buttons_rect[1]):
+                        self.minimum_horizontal_speed = .01
+                        self.initial_direction_choice = [self.game_resolution[0] * self.minimum_horizontal_speed,-self.game_resolution[0] *self.minimum_horizontal_speed]
+                        self.ball_speed = [random.choice(self.initial_direction_choice),0]
+                    if mouse_rect.colliderect(self.menu_buttons_rect[2]):
+                        self.minimum_horizontal_speed = .014
+                        self.initial_direction_choice = [self.game_resolution[0] * self.minimum_horizontal_speed,-self.game_resolution[0] *self.minimum_horizontal_speed]
+                        self.ball_speed = [random.choice(self.initial_direction_choice),0]
+                    self.render_menu_logic(["Change Ball Speed","Play","Exit Game"])
+    def detect_click_on_button(self):
+        pass
     def player_movement_logic(self):
         self.keys = pygame.key.get_pressed()
         """ Manage Players movement considering collisions on main screen """
@@ -85,6 +110,8 @@ class Game:
         while not self.running:
             self.clock.tick(30)
             self.event_manager()
+            if self.is_game_closed:
+                self.running = True
     def initial_game_position(self):
         self.left_player_position = [self.players_x_distance_to_borders , self.game_resolution[1] // 2 - self.players_surface_dimensions[1] //2]
         self.right_player_position = [self.game_resolution[0] - (self.players_x_distance_to_borders + self.players_surface_dimensions[0]) ,self.game_resolution[1] // 2 - self.players_surface_dimensions[1]//2]
@@ -168,9 +195,32 @@ class Game:
         if self.running:
             self.screen.blit(self.ball_surface,self.ball_position)
         else:
-            self.start_prompt_surface = self.font.render("Press any key to start",True, self.object_color)
-            self.start_prompt_surface_dimensions = self.start_prompt_surface.get_size()
-            self.screen.blit(self.start_prompt_surface,((self.game_resolution[0]//2 - (self.start_prompt_surface_dimensions[0] //2)),((self.game_resolution[1] // 2) - (self.start_prompt_surface_dimensions[1] // 2))))
+           self.render_menu_logic(["Change Ball Speed","Play","Exit Game"])
+        pygame.display.flip()
+    def render_menu_logic(self,button_string_list):
+        """ Menu Buttons Appearance """
+        number_buttons_menu = len(button_string_list)
+        total_vertical_space_for_buttons = .6
+        self.menu_button_surface_dimensions = self.game_resolution[0] *.5 , self.game_resolution[1] * (total_vertical_space_for_buttons / number_buttons_menu)
+        menu_buttons_margin =((1 - total_vertical_space_for_buttons) / (number_buttons_menu + 1)) * self.game_resolution[1]
+        self.menu_button_surface = pygame.Surface(self.menu_button_surface_dimensions)
+        self.menu_button_surface.fill(self.object_color)
+        self.menu_buttons_rect = {} 
+        for i in range(number_buttons_menu):
+            actual_top_left_corner = (self.game_resolution[0] // 2 - self.menu_button_surface_dimensions[0]//2) , menu_buttons_margin *(i + 1) + self.menu_button_surface_dimensions[1] * i
+            self.screen.blit(self.menu_button_surface,actual_top_left_corner)
+            self.menu_buttons_rect[i] = self.menu_button_surface.get_rect(topleft = actual_top_left_corner)
+            """ Calculate optimal font size """
+            text_size = 1
+            buttons_text_fonts = pygame.font.SysFont(None,text_size)
+            text_surface = buttons_text_fonts.render(button_string_list[i], True, (0, 0, 0))
+            text_dimensions = 0,0
+            while text_dimensions[0] < self.menu_button_surface_dimensions[0] //2 and text_dimensions[1] < self.menu_button_surface_dimensions[1]//2:
+                text_size+=15
+                buttons_text_fonts = pygame.font.SysFont(None,text_size)
+                text_surface = buttons_text_fonts.render(button_string_list[i], True, (0, 0, 0))
+                text_dimensions = text_surface.get_size()
+            self.screen.blit(text_surface,(self.menu_buttons_rect[i].center[0] - text_dimensions[0] // 2,self.menu_buttons_rect[i].center[1] - text_dimensions[1]//2))
         pygame.display.flip()
 pongGame = Game()
 pongGame.execute_game()
