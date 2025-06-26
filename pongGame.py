@@ -40,8 +40,16 @@ class Game:
         pygame.display.set_caption("Pong Game")
         self.font = pygame.font.SysFont(None,48)
         """ Draw on ball surface a circle (surface,color,center of circle, radius)"""
-        self.chargeMenu()
+        self.charge_menu()
         self.game_loop()
+    def charge_menu(self):
+        self.initial_game_position()
+        self.render_screen()
+        while not self.running:
+            self.clock.tick(30)
+            self.event_manager()
+            if self.is_game_closed:
+                self.running = True
     def game_loop(self):
         while self.running:
             self.clock.tick(60)
@@ -55,7 +63,7 @@ class Game:
             else:
                 self.recent_player_point-= 1
             self.render_screen()
-        self.chargeMenu()
+        self.charge_menu()
         self.game_loop()
     def event_manager(self):
         for event in pygame.event.get():
@@ -76,6 +84,7 @@ class Game:
                 else:
                     if mouse_rect.colliderect(self.menu_buttons_rect[0]) or mouse_rect.colliderect(self.menu_buttons_rect[1]) or mouse_rect.colliderect(self.menu_buttons_rect[2]):
                         self.speed_menu = False
+                        self.render_menu_logic(["Change Ball Speed","Play","Exit Game"])
                     if mouse_rect.colliderect(self.menu_buttons_rect[1]):
                         self.minimum_horizontal_speed = .01
                         self.initial_direction_choice = [self.game_resolution[0] * self.minimum_horizontal_speed,-self.game_resolution[0] *self.minimum_horizontal_speed]
@@ -84,7 +93,6 @@ class Game:
                         self.minimum_horizontal_speed = .014
                         self.initial_direction_choice = [self.game_resolution[0] * self.minimum_horizontal_speed,-self.game_resolution[0] *self.minimum_horizontal_speed]
                         self.ball_speed = [random.choice(self.initial_direction_choice),0]
-                    self.render_menu_logic(["Change Ball Speed","Play","Exit Game"])
     def detect_click_on_button(self):
         pass
     def player_movement_logic(self):
@@ -104,14 +112,6 @@ class Game:
         if self.keys[pygame.K_k]:
             if not(self.right_player_position[1] >= self.game_resolution[1] - self.players_surface_dimensions[1]):
                 self.right_player_position[1]+= self.players_speed_per_frame
-    def chargeMenu(self):
-        self.initial_game_position()
-        self.render_screen()
-        while not self.running:
-            self.clock.tick(30)
-            self.event_manager()
-            if self.is_game_closed:
-                self.running = True
     def initial_game_position(self):
         self.left_player_position = [self.players_x_distance_to_borders , self.game_resolution[1] // 2 - self.players_surface_dimensions[1] //2]
         self.right_player_position = [self.game_resolution[0] - (self.players_x_distance_to_borders + self.players_surface_dimensions[0]) ,self.game_resolution[1] // 2 - self.players_surface_dimensions[1]//2]
