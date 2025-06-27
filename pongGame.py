@@ -1,6 +1,7 @@
 import pygame
 import random
 import time
+import math
 class Game:
     def __init__(self):
         """Game loop flag variable"""
@@ -8,7 +9,7 @@ class Game:
         self.right_player_score = 0
         self.running = False
         """Main window surface"""
-        self.game_resolution = 500,354
+        self.game_resolution = 1280,720
         self.screen = pygame.display.set_mode(self.game_resolution)
         self.clock = pygame.time.Clock()
         self.minimum_horizontal_speed = .014
@@ -33,12 +34,21 @@ class Game:
         self.recent_player_point = 0
         self.is_game_closed = False
         self.speed_menu = False
+        self.is_exit_menu_active = False
+        self.is_game_paused = False
+        self.pause_image = pygame.image.load("assets/pauseimage.png").convert_alpha()
+        self.pause_image = pygame.transform.scale(self.pause_image, (self.game_resolution[0] *.1,self.game_resolution[0] *.1))
+        self.pause_image_dimensions = self.pause_image.get_size()
+        self.mid_line_surface_dimension = self.game_resolution[0] * .01, self.game_resolution[1]
+        self.mid_line_surface = pygame.Surface(self.mid_line_surface_dimension)
+        self.mid_line_surface.fill(self.object_color)
+        self.pause_image_rect = self.pause_image.get_rect(topleft = (self.game_resolution[0] //2 - self.pause_image_dimensions[0]// 2, self.game_resolution[1] * .05))
         pygame.draw.circle(self.ball_surface,self.object_color,(self.ball_surface_dimensions[0]//2,self.ball_surface_dimensions[1]//2),self.ball_surface_dimensions[0]//2)
     """ Method for executing game """
     def execute_game(self):
         pygame.init()
         pygame.display.set_caption("Pong Game")
-        self.font = pygame.font.SysFont(None,48)
+        self.font = pygame.font.SysFont(None,math.ceil(self.game_resolution[0] * .15))
         """ Draw on ball surface a circle (surface,color,center of circle, radius)"""
         self.charge_menu()
         self.game_loop()
@@ -54,6 +64,8 @@ class Game:
         while self.running:
             self.clock.tick(60)
             self.event_manager()
+            while self.is_game_paused:
+                self.event_manager()
             if self.is_game_closed:
                 pygame.quit()
                 return 'Game Ended succesfully'
@@ -69,19 +81,33 @@ class Game:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                  self.is_game_closed = True 
-            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1 and not self.running:
+            if event.type == pygame.KEYDOWN:
+                self.is_exit_menu_active = False
+            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1 and self.running and not self.is_exit_menu_active:
+                mouse_pos = pygame.mouse.get_pos()
+                mouse_rect = pygame.Rect(mouse_pos[0],mouse_pos[1],1,1)
+                if self.is_game_paused:
+                    if mouse_rect.colliderect(self.menu_buttons_rect[0]) or mouse_rect.colliderect(self.menu_buttons_rect[1]) :
+                       self.is_game_paused = False
+                    if mouse_rect.colliderect(self.menu_buttons_rect[1]):
+                        self.is_game_closed = True
+                if self.pause_image_rect.colliderect(mouse_rect) and not self.is_game_paused:
+                    self.is_game_paused = True
+                    self.render_menu_logic(["Resume Game","Exit Game"])
+            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1 and not self.running and not self.is_exit_menu_active:
                 mouse_pos = pygame.mouse.get_pos()
                 mouse_rect = pygame.Rect(mouse_pos[0],mouse_pos[1],1,1)
                 if not self.speed_menu:
+                    """ Main Menu Buttons Handlers """
                     if mouse_rect.colliderect(self.menu_buttons_rect[0]):
                         self.speed_menu = True
                         self.render_menu_logic(["Return Main Menu","Slow","Fast"])
                     if mouse_rect.colliderect(self.menu_buttons_rect[1]):
                         self.running = True
                     if mouse_rect.colliderect(self.menu_buttons_rect[2]):
-                        print("Now")
                         self.is_game_closed = True
                 else:
+                    """Speed Menu Button Handlers"""
                     if mouse_rect.colliderect(self.menu_buttons_rect[0]) or mouse_rect.colliderect(self.menu_buttons_rect[1]) or mouse_rect.colliderect(self.menu_buttons_rect[2]):
                         self.speed_menu = False
                         self.render_menu_logic(["Change Ball Speed","Play","Exit Game"])
@@ -93,11 +119,9 @@ class Game:
                         self.minimum_horizontal_speed = .014
                         self.initial_direction_choice = [self.game_resolution[0] * self.minimum_horizontal_speed,-self.game_resolution[0] *self.minimum_horizontal_speed]
                         self.ball_speed = [random.choice(self.initial_direction_choice),0]
-    def detect_click_on_button(self):
-        pass
     def player_movement_logic(self):
         self.keys = pygame.key.get_pressed()
-        """ Manage Players movement considering collisions on main screen """
+        """ Manage Players movement considering collisions on main screen limits"""
         """ Set left player key configs """
         if self.keys[pygame.K_w]:
             if not(self.left_player_position[1] <= 0):
@@ -106,16 +130,16 @@ class Game:
             if not(self.left_player_position[1] >= self.game_resolution[1]  - self.players_surface_dimensions[1]):
                 self.left_player_position[1] += self.players_speed_per_frame
         """ Set right player key configs """
-        if self.keys[pygame.K_i]:
+        if self.keys[pygame.K_UP]:
             if not(self.right_player_position[1] <= 0):
                 self.right_player_position[1]-= self.players_speed_per_frame
-        if self.keys[pygame.K_k]:
+        if self.keys[pygame.K_DOWN]:
             if not(self.right_player_position[1] >= self.game_resolution[1] - self.players_surface_dimensions[1]):
                 self.right_player_position[1]+= self.players_speed_per_frame
     def initial_game_position(self):
         self.left_player_position = [self.players_x_distance_to_borders , self.game_resolution[1] // 2 - self.players_surface_dimensions[1] //2]
         self.right_player_position = [self.game_resolution[0] - (self.players_x_distance_to_borders + self.players_surface_dimensions[0]) ,self.game_resolution[1] // 2 - self.players_surface_dimensions[1]//2]
-        self.ball_position = [self.game_resolution[0]//2,self.game_resolution[1]//2 - self.ball_surface_dimensions[1] //2]
+        self.ball_position = [self.game_resolution[0]//2 - self.ball_surface_dimensions[0] // 2,self.game_resolution[1]//2 - self.ball_surface_dimensions[1] //2]
         if self.ball_speed is None:
             self.ball_speed = [random.choice(self.initial_direction_choice),0]
         else:
@@ -175,17 +199,19 @@ class Game:
             self.left_player_score +=1
             self.initial_game_position()
         """ END OF A GAME """
+        if self.left_player_score == 10:
+            self.winner = "Left"
+        if self.right_player_score == 10:
+            self.winner ="Right"
         if self.left_player_score == 10 or self.right_player_score == 10:
             self.running = False
-            """PENDING, CREATE EXIT MENU"""
             self.exit_menu()
             self.left_player_score, self.right_player_score = 0,0
-    def exit_menu(self):
-        pass
     def render_screen(self):
         self.screen.fill(self.background)
         self.screen.blit(self.players_surface,self.left_player_position)
         self.screen.blit(self.players_surface,self.right_player_position)
+        self.screen.blit(self.mid_line_surface,(self.game_resolution[0] // 2 - self.mid_line_surface_dimension[0] // 2,0))
         self.left_text_score_surface = self.font.render(f"{self.left_player_score}",True,self.object_color)
         self.right_text_score_surface = self.font.render(f"{self.right_player_score}",True,self.object_color)
         self.left_player_score_surface_dimensions = self.left_text_score_surface.get_size()
@@ -194,6 +220,8 @@ class Game:
         self.screen.blit(self.right_text_score_surface,(self.game_resolution[0] - (self.score_distance_to_borders[0] + self.right_player_score_surface_dimensions[0]), self.score_distance_to_borders[1]))
         if self.running:
             self.screen.blit(self.ball_surface,self.ball_position)
+            """ Insert Pause Button """
+            self.screen.blit(self.pause_image,self.pause_image_rect)
         else:
            self.render_menu_logic(["Change Ball Speed","Play","Exit Game"])
         pygame.display.flip()
@@ -222,5 +250,17 @@ class Game:
                 text_dimensions = text_surface.get_size()
             self.screen.blit(text_surface,(self.menu_buttons_rect[i].center[0] - text_dimensions[0] // 2,self.menu_buttons_rect[i].center[1] - text_dimensions[1]//2))
         pygame.display.flip()
+    def exit_menu(self):
+        winner_text_surface =  self.font.render(f"{self.winner} Player Wins!",True,self.object_color)
+        winner_text_surface_dimensions = winner_text_surface.get_size()
+        return_text_font = pygame.font.SysFont(None,math.ceil(self.game_resolution[0] *.05))
+        return_text_surface =  return_text_font.render(f"Press any key to return to main menu",True,self.object_color)
+        return_text_surface_dimensions = return_text_surface.get_size()
+        self.screen.blit(winner_text_surface,(self.game_resolution[0] // 2 - winner_text_surface_dimensions[0] //2, self.game_resolution[1] *.2))
+        self.screen.blit(return_text_surface,(self.game_resolution[0] // 2 - return_text_surface_dimensions[0] //2, self.game_resolution[1] *.4))
+        pygame.display.flip()
+        self.is_exit_menu_active = True
+        while self.is_exit_menu_active:
+            self.event_manager()
 pongGame = Game()
 pongGame.execute_game()
