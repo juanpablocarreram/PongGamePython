@@ -1,6 +1,5 @@
 import pygame
 import random
-import time
 import math
 class Game:
     def __init__(self):
